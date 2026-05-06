@@ -128,9 +128,9 @@
     align-items: center;
   }
   .zhuyin-hint .zh-readings.count-1 { grid-template-columns: 1fr; }
-  .zhuyin-hint .zh-readings.count-2 { grid-template-columns: 1fr; }
-  .zhuyin-hint .zh-readings.count-3 { grid-template-columns: 1fr; }
-  .zhuyin-hint .zh-readings.count-4 { grid-template-columns: 1fr 1fr; }
+  .zhuyin-hint .zh-readings.count-2 { grid-template-columns: 1fr; gap: 36px; justify-items: start; }
+  .zhuyin-hint .zh-readings.count-3 { grid-template-columns: 1fr; gap: 30px; justify-items: start; }
+  .zhuyin-hint .zh-readings.count-4 { grid-template-columns: 1fr 1fr; gap: 30px 36px; justify-items: start; }
   
   /* 單個讀音：注音字直排 + 聲調獨立放右邊 */
   .zhuyin-hint .zh-reading {
@@ -195,24 +195,38 @@
     pointer-events: none;
     /* 楷書字型 fallback 鏈：先 Mac、再 Windows、最後系統預設 */
     font-family: 'Kaiti TC', 'BiauKai', 'STKaiti', '標楷體', 'DFKai-SB', 'KaiTi', 'Noto Serif TC', serif;
-    /* 從左上往下、寫滿一欄就跳到右邊新欄 */
-    display: flex;
-    flex-direction: column;
-    flex-wrap: wrap;
-    align-content: flex-start;
-    gap: 4px 14px;
+    /* 用 multi-column 佈局：寫滿一欄就自動跳到右邊新欄 */
+    column-width: 32px;
+    column-gap: 14px;
+    column-fill: auto;
+    /* 防止 iOS Safari 的 caret/select 殘影 */
+    caret-color: transparent;
+    -webkit-tap-highlight-color: transparent;
+    -webkit-user-select: none;
+    user-select: none;
   }
   .history-char {
+    display: block;
     font-size: 22px;
-    line-height: 1.2;
+    line-height: 1.4;
     color: var(--ink-soft);
     opacity: 0.5;
     width: 1.2em;
     text-align: center;
+    /* 確保 column 不會把字斷開 */
+    break-inside: avoid;
+    -webkit-column-break-inside: avoid;
+    page-break-inside: avoid;
+    caret-color: transparent;
+    -webkit-user-select: none;
+    user-select: none;
+    /* 雙保險避免 iOS Safari 文字渲染殘留 */
+    -webkit-text-fill-color: currentColor;
   }
   .history-char.wrong {
     color: var(--red);
     opacity: 0.85;
+    -webkit-text-fill-color: var(--red);
   }
   
   /* 麥克風狀態區 */
