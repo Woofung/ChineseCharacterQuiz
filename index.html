@@ -116,6 +116,47 @@
     opacity: 1;
   }
   
+  /* 觸控翻頁區（手動模式 + 觸控裝置才啟用） */
+  .touch-zones {
+    position: fixed;
+    inset: 0;
+    z-index: 60;
+    pointer-events: none;
+    display: none;
+  }
+  .touch-zones.show { display: block; }
+  .touch-zones .tz-left,
+  .touch-zones .tz-right {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 28%;
+    pointer-events: auto;
+    cursor: pointer;
+    -webkit-tap-highlight-color: rgba(184,68,46,0.1);
+    /* 視覺暗示：邊緣淡色漸層，滑入更明顯 */
+    transition: background 0.15s;
+  }
+  .touch-zones .tz-left { left: 0; }
+  .touch-zones .tz-right { right: 0; }
+  .touch-zones .tz-left:active,
+  .touch-zones .tz-right:active {
+    background: rgba(184,68,46,0.08);
+  }
+  /* 邊角小箭頭提示（半透明，提示使用者哪裡可點） */
+  .touch-zones .tz-arrow {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 28px;
+    color: var(--ink-soft);
+    opacity: 0.18;
+    pointer-events: none;
+    user-select: none;
+  }
+  .touch-zones .tz-left .tz-arrow { left: 14px; }
+  .touch-zones .tz-right .tz-arrow { right: 14px; }
+  
   /* 主漢字 */
   .character {
     font-family: 'Noto Serif TC', 'PingFang TC', 'Microsoft JhengHei', serif;
@@ -682,6 +723,12 @@
 <!-- 手動模式切換（右上角極小按鈕） -->
 <button class="manual-toggle" id="manual-toggle" title="手動模式（左右鍵翻題）">✋</button>
 
+<!-- 觸控翻頁區（手動模式啟用時顯示，左半邊上一題、右半邊下一題） -->
+<div class="touch-zones" id="touch-zones">
+  <div class="tz-left" id="tz-left"><span class="tz-arrow">‹</span></div>
+  <div class="tz-right" id="tz-right"><span class="tz-arrow">›</span></div>
+</div>
+
 <!-- 麥克風權限錯誤 -->
 <div class="mic-error-box" id="mic-error">
   <div class="err-card">
@@ -981,6 +1028,8 @@ let isRecognizing = false;
 let isLocked = false;
 let shouldKeepListening = false;  // 是否要在 onend 後繼續聆聽
 let manualMode = false;            // 手動模式（左右鍵翻題、不開麥克風）
+// 偵測是否為觸控裝置（iPad / iPhone / Android）
+const isTouchDevice = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
 
 // ============ DOM ============
 const charEl = document.getElementById('char');
@@ -1067,10 +1116,13 @@ function setManualMode(on) {
     try { recognition && recognition.stop(); } catch (e) {}
     micIcon.classList.remove('listening');
     micIcon.classList.add('locked');
-    micLabel.textContent = '手動模式 · 按 ← → 切換';
+    micLabel.textContent = '手動模式 · ' + (isTouchDevice ? '點擊左右側翻頁' : '按 ← → 切換');
     heardText.textContent = '';
+    // 顯示左右點擊提示（觸控裝置）
+    document.getElementById('touch-zones').classList.add('show');
   } else {
     manualToggle.classList.remove('active');
+    document.getElementById('touch-zones').classList.remove('show');
     // 如果在考試中，重新開麥克風
     if (questions.length > 0 && qIndex < questions.length && !document.getElementById('result-overlay').classList.contains('show')) {
       shouldKeepListening = true;
@@ -1086,36 +1138,50 @@ manualToggle.addEventListener('click', () => {
   setManualMode(!manualMode);
 });
 
+// 翻題（手動模式下，鍵盤和觸控都呼叫此函式）
+function manualNext() {
+  if (!manualMode) return;
+  if (questions.length === 0) return;
+  if (qIndex < questions.length - 1) {
+    qIndex++;
+    isLocked = false;
+    renderQuestion();
+    showCurrentZhuyin();
+  } else {
+    // 已是最後一題 → 結果頁
+    shouldKeepListening = false;
+    showResult();
+  }
+}
+
+function manualPrev() {
+  if (!manualMode) return;
+  if (questions.length === 0) return;
+  if (qIndex > 0) {
+    qIndex--;
+    isLocked = false;
+    renderQuestion();
+    showCurrentZhuyin();
+  }
+}
+
 // 左右鍵翻題（只在手動模式生效）
 document.addEventListener('keydown', (e) => {
   if (!manualMode) return;
-  // 不在考試中、或結果頁顯示中時，不處理
   if (questions.length === 0) return;
   
   if (e.key === 'ArrowRight' || e.key === ' ') {
     e.preventDefault();
-    // 下一題
-    if (qIndex < questions.length - 1) {
-      qIndex++;
-      isLocked = false;
-      renderQuestion();
-      // 顯示注音（手動模式邊看邊學）
-      showCurrentZhuyin();
-    } else {
-      // 已是最後一題 → 結果頁
-      shouldKeepListening = false;
-      showResult();
-    }
+    manualNext();
   } else if (e.key === 'ArrowLeft') {
     e.preventDefault();
-    if (qIndex > 0) {
-      qIndex--;
-      isLocked = false;
-      renderQuestion();
-      showCurrentZhuyin();
-    }
+    manualPrev();
   }
 });
+
+// 觸控區點擊（手動模式下，左半邊 = 上一題、右半邊 = 下一題）
+document.getElementById('tz-left').addEventListener('click', manualPrev);
+document.getElementById('tz-right').addEventListener('click', manualNext);
 
 // 手動模式下顯示當前題目的注音（不算對錯）
 function showCurrentZhuyin() {
@@ -1472,6 +1538,12 @@ function startQuiz(charsOverride) {
   wrongChars = [];
   document.getElementById('result-overlay').classList.remove('show');
   shouldKeepListening = !manualMode;
+  // 手動模式下重新顯示觸控翻頁區
+  const tz = document.getElementById('touch-zones');
+  if (tz) {
+    if (manualMode) tz.classList.add('show');
+    else tz.classList.remove('show');
+  }
   // 清空歷史面板
   const hp = document.getElementById('history-panel');
   if (hp) hp.innerHTML = '';
@@ -1526,23 +1598,29 @@ function renderQuestion() {
   micIcon.classList.remove('locked');
   isLocked = false;
   
-  // 顯示範例詞
-  const phraseEl = document.getElementById('phrase-hint');
-  const phrase = phraseMap[ch];
-  if (phrase) {
-    phraseEl.innerHTML = `<span class="phrase-label">範例：</span><span class="phrase-text">${phrase}</span>`;
-  } else {
-    phraseEl.innerHTML = '';
-  }
+  // 範例詞先清空（答題後才顯示）
+  document.getElementById('phrase-hint').innerHTML = '';
   
   updateCounter();
   
   if (manualMode) {
-    micLabel.textContent = '手動模式 · 按 ← → 切換';
+    micLabel.textContent = '手動模式 · ' + (isTouchDevice ? '左右側點擊切換' : '按 ← → 切換');
     micIcon.classList.add('locked');
     showCurrentZhuyin();  // 手動模式直接顯示注音
+    showCurrentPhrase();  // 手動模式直接顯示範例
   } else {
     startListening();
+  }
+}
+
+function showCurrentPhrase() {
+  const ch = questions[qIndex];
+  const phrase = phraseMap[ch];
+  const phraseEl = document.getElementById('phrase-hint');
+  if (phrase) {
+    phraseEl.innerHTML = `<span class="phrase-label">範例：</span><span class="phrase-text">${phrase}</span>`;
+  } else {
+    phraseEl.innerHTML = '';
   }
 }
 
@@ -1639,6 +1717,9 @@ function handleAnswer(alternatives) {
   micIcon.classList.add('locked');
   micIcon.classList.remove('listening');
   
+  // 答題後顯示範例詞
+  showCurrentPhrase();
+  
   if (matched) {
     document.body.classList.add('correct-flash');
     stats.correct++;
@@ -1683,6 +1764,9 @@ function startListening() {
 function showResult() {
   shouldKeepListening = false;
   try { recognition && recognition.stop(); } catch (e) {}
+  
+  // 結果頁時關閉觸控翻頁區（避免誤點）
+  document.getElementById('touch-zones').classList.remove('show');
   
   const pad = n => String(n).padStart(2, '0');
   document.getElementById('r-correct').textContent = pad(stats.correct);
