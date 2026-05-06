@@ -277,15 +277,12 @@
     -webkit-text-fill-color: var(--red);
   }
   
-  /* 麥克風狀態區 */
+  /* 麥克風狀態區（接在題目+範例詞之下，正常 flow） */
   .mic-status {
-    position: absolute;
-    bottom: 120px;
-    left: 50%;
-    transform: translateX(-50%);
     text-align: center;
     width: 600px;
     max-width: 90%;
+    margin-top: 56px;
   }
   
   .mic-icon {
@@ -480,162 +477,103 @@
     display: flex;
     flex-direction: column;
     align-items: center;
-    justify-content: flex-start;
+    justify-content: center;
     padding: 40px 24px;
     z-index: 80;
     overflow-y: auto;
   }
   .start-overlay.hidden { display: none; }
+  .start-overlay .start-card {
+    width: 100%;
+    max-width: 460px;
+    text-align: center;
+  }
   .start-overlay h1 {
-    font-family: 'Didot', 'Bodoni 72', serif;
-    font-size: 42px;
-    margin-bottom: 8px;
-    margin-top: 24px;
-    letter-spacing: -1px;
+    font-family: 'Didot', 'Bodoni 72', 'Noto Serif TC', serif;
+    font-size: 48px;
+    margin-bottom: 6px;
+    letter-spacing: 4px;
+    font-weight: normal;
   }
   .start-overlay .sub {
     font-style: italic;
     color: var(--ink-soft);
-    margin-bottom: 32px;
-    letter-spacing: 1px;
-  }
-  /* 載入區 */
-  .start-overlay .load-section {
-    width: 100%;
-    max-width: 720px;
-    margin-bottom: 24px;
-  }
-  .start-overlay .saved-banner {
-    padding: 12px 18px;
-    background: rgba(255,255,255,0.5);
-    border: 1px solid var(--rule);
-    border-left: 3px solid var(--green);
-    margin-bottom: 16px;
-    font-size: 14px;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    gap: 16px;
-  }
-  .start-overlay .saved-banner.cloud { border-left-color: var(--accent); }
-  .start-overlay .saved-banner .meta {
-    color: var(--ink-soft);
-    font-size: 12px;
-    margin-top: 2px;
-  }
-  .start-overlay .upload-row {
-    display: flex;
-    gap: 12px;
-    align-items: center;
-    flex-wrap: wrap;
-  }
-  .start-overlay .upload-btn {
-    font-family: inherit;
-    padding: 10px 20px;
-    background: var(--paper);
-    color: var(--ink);
-    border: 1.5px solid var(--ink);
-    cursor: pointer;
     font-size: 15px;
+    margin-bottom: 56px;
     letter-spacing: 1px;
   }
-  .start-overlay .upload-btn:hover { background: var(--paper-dark); }
-  .start-overlay .upload-hint {
-    color: var(--ink-soft);
-    font-size: 13px;
+  /* 章節下拉選單 */
+  .start-overlay .field {
+    margin-bottom: 20px;
+    text-align: left;
   }
-  .start-overlay .clear-btn {
-    font-family: inherit;
-    padding: 6px 14px;
-    background: transparent;
-    color: var(--ink-soft);
-    border: 1px solid var(--rule);
-    cursor: pointer;
+  .start-overlay .field label {
+    display: block;
     font-size: 12px;
-  }
-  .start-overlay .err {
-    color: var(--red);
-    font-size: 14px;
-    margin-top: 8px;
-  }
-  
-  /* 章節選擇區 */
-  .start-overlay .chapters-section {
-    width: 100%;
-    max-width: 720px;
-    margin-top: 12px;
-  }
-  .start-overlay .chapters-section h3 {
-    font-family: 'Didot', serif;
-    font-size: 16px;
     letter-spacing: 4px;
     color: var(--ink-soft);
-    margin-bottom: 14px;
     text-transform: uppercase;
-    font-weight: normal;
+    margin-bottom: 8px;
+    font-family: 'Didot', serif;
   }
-  .start-overlay .chapter-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
-    gap: 8px;
-  }
-  .start-overlay .chapter-btn {
+  .start-overlay select {
     font-family: inherit;
-    padding: 12px 8px;
+    font-size: 17px;
+    width: 100%;
+    padding: 14px 16px;
+    border: 1.5px solid var(--ink);
     background: var(--paper);
     color: var(--ink);
-    border: 1px solid var(--rule);
+    border-radius: 2px;
     cursor: pointer;
-    font-size: 14px;
-    transition: all 0.15s;
-    text-align: center;
+    -webkit-appearance: none;
+    appearance: none;
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 8'><path d='M1 1l5 5 5-5' stroke='%232a2620' stroke-width='1.5' fill='none'/></svg>");
+    background-repeat: no-repeat;
+    background-position: right 16px center;
+    background-size: 12px;
+    padding-right: 40px;
   }
-  .start-overlay .chapter-btn:hover {
-    background: var(--ink);
-    color: var(--paper);
-    border-color: var(--ink);
+  .start-overlay select:disabled { opacity: 0.4; cursor: not-allowed; }
+  .start-overlay select:focus {
+    outline: none;
+    border-color: var(--accent);
   }
-  .start-overlay .chapter-btn .ch-num {
-    font-weight: bold;
-    font-size: 16px;
-    display: block;
-  }
-  .start-overlay .chapter-btn .ch-range {
-    font-size: 11px;
-    color: var(--ink-soft);
-    margin-top: 2px;
-  }
-  .start-overlay .chapter-btn:hover .ch-range { color: var(--paper-dark); }
-  
-  .start-btn-big {
+  .start-overlay .start-btn-main {
     font-family: inherit;
-    font-size: 22px;
-    padding: 18px 48px;
+    font-size: 18px;
+    width: 100%;
+    padding: 16px;
     background: var(--ink);
     color: var(--paper);
     border: none;
     cursor: pointer;
     letter-spacing: 6px;
     text-transform: uppercase;
+    margin-top: 8px;
     transition: all 0.2s;
   }
-  .start-btn-big:hover {
+  .start-overlay .start-btn-main:hover:not(:disabled) {
     background: var(--accent);
-    transform: translateY(-2px);
-    box-shadow: 0 4px 0 var(--ink);
   }
-  .start-overlay .info-box {
-    margin-top: 24px;
-    max-width: 720px;
-    padding: 14px 20px;
-    background: rgba(255,255,255,0.4);
-    border: 1px solid var(--rule);
-    border-radius: 2px;
-    font-size: 13px;
+  .start-overlay .start-btn-main:disabled {
+    opacity: 0.3;
+    cursor: not-allowed;
+  }
+  .start-overlay .status-line {
+    font-size: 12px;
     color: var(--ink-soft);
-    line-height: 1.7;
+    margin-top: 32px;
+    letter-spacing: 1px;
   }
-  .start-overlay .info-box strong { color: var(--ink); }
+  .start-overlay .err {
+    color: var(--red);
+    font-size: 14px;
+    margin-top: 16px;
+  }
+  
+  /* 隱藏的上傳區（保留 DOM 但不顯示） */
+  .start-overlay .load-section { display: none; }
 
   /* 麥克風權限錯誤 */
   .mic-error-box {
@@ -683,34 +621,37 @@
 
 <!-- 開始畫面 -->
 <div class="start-overlay" id="start-overlay">
-  <h1>中文發音測驗</h1>
-  <div class="sub">念出畫面上的字 · 系統自動判定</div>
-  
-  <!-- 載入字庫區（隱藏：字庫由網頁自動載入） -->
-  <div class="load-section" style="display:none">
-    <div id="saved-file-area"></div>
-    <div class="upload-row">
-      <input type="file" id="file-input" accept=".xlsx,.xls" style="display:none">
-      <button class="upload-btn" id="upload-btn">上傳字庫 Excel</button>
+  <div class="start-card">
+    <h1>中文發音測驗</h1>
+    <div class="sub">— Mandarin Pronunciation —</div>
+    
+    <!-- 隱藏的上傳區（保留 DOM 與相關 JS 邏輯，但不顯示） -->
+    <div class="load-section">
+      <div id="saved-file-area"></div>
+      <div class="upload-row">
+        <input type="file" id="file-input" accept=".xlsx,.xls">
+        <button class="upload-btn" id="upload-btn">上傳字庫 Excel</button>
+      </div>
+      <div class="err" id="load-err"></div>
     </div>
-    <div class="err" id="load-err"></div>
+    
+    <!-- 章節下拉選單 -->
+    <div class="field">
+      <label>選擇章節</label>
+      <select id="chapter-select" disabled>
+        <option>字庫載入中…</option>
+      </select>
+    </div>
+    
+    <button class="start-btn-main" id="start-quiz-btn" disabled>開始考試</button>
+    
+    <div class="status-line" id="load-status"></div>
+    <div class="err" id="load-err-visible"></div>
   </div>
   
-  <!-- 載入錯誤訊息（單獨顯示，不依賴上傳區） -->
-  <div class="err" id="load-err-visible" style="color: var(--red); font-size: 14px; margin-bottom: 12px;"></div>
-  
-  <!-- 字庫載入狀態（簡單顯示，不顯示檔名/上傳功能） -->
-  <div id="load-status" style="font-size: 13px; color: var(--ink-soft); margin-bottom: 20px;">字庫載入中…</div>
-  
-  <!-- 章節選擇區 -->
+  <!-- 隱藏：保留 DOM 但不再用 -->
   <div class="chapters-section" id="chapters-section" style="display:none">
-    <h3>選擇章節開始考試</h3>
     <div class="chapter-grid" id="chapter-grid"></div>
-  </div>
-  
-  <div class="info-box">
-    每章 50 字 · 隨機出題 · 念對自動進到下一題<br>
-    第一次按章節時會請求麥克風權限，請點「<strong>允許</strong>」。
   </div>
 </div>
 
@@ -1103,6 +1044,13 @@ async function startChapter(chapterNum) {
   startQuiz();
 }
 
+// 「開始考試」按鈕
+document.getElementById('start-quiz-btn').addEventListener('click', () => {
+  const select = document.getElementById('chapter-select');
+  const num = parseInt(select.value, 10);
+  if (!isNaN(num)) startChapter(num);
+});
+
 micRetryBtn.addEventListener('click', () => {
   location.reload();
 });
@@ -1356,21 +1304,23 @@ function renderSavedBanner(name, savedAt, source) {
 }
 
 function renderChapterButtons() {
-  chapterGrid.innerHTML = '';
+  const select = document.getElementById('chapter-select');
+  const startBtn = document.getElementById('start-quiz-btn');
+  if (!select) return;
+  
+  select.innerHTML = '';
   const chapters = Object.keys(chaptersMap).map(n => parseInt(n, 10)).sort((a, b) => a - b);
   
   for (const num of chapters) {
     const chars = chaptersMap[num];
-    const btn = document.createElement('button');
-    btn.className = 'chapter-btn';
-    btn.innerHTML = `
-      <span class="ch-num">第 ${num} 章</span>
-      <span class="ch-range">${chars[0]}…${chars[chars.length - 1]} (${chars.length})</span>
-    `;
-    btn.addEventListener('click', () => startChapter(num));
-    chapterGrid.appendChild(btn);
+    const opt = document.createElement('option');
+    opt.value = num;
+    opt.textContent = `第 ${num} 章 — ${chars[0]} … ${chars[chars.length - 1]} （${chars.length} 字）`;
+    select.appendChild(opt);
   }
-  chaptersSection.style.display = '';
+  
+  select.disabled = false;
+  if (startBtn) startBtn.disabled = false;
 }
 
 // === 從使用者上傳的檔案讀取 ===
