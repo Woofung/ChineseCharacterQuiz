@@ -2,9 +2,12 @@
 <html lang="zh-Hant">
 <head>
 <meta charset="UTF-8">
-<title>中文發音測驗（示範版）</title>
-<!-- pinyin-pro：中文轉拼音/注音函式庫，內含完整字典與多音字資料 -->
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>中文發音測驗</title>
+<!-- pinyin-pro：中文轉拼音/注音函式庫 -->
 <script src="https://cdn.jsdelivr.net/npm/pinyin-pro@3.26.0/dist/index.js"></script>
+<!-- SheetJS：解析 Excel -->
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <style>
   :root {
     --paper: #f4ede0;
@@ -83,6 +86,36 @@
   .counter .c-wrong { color: var(--red); }
   .counter .c-sep { color: var(--ink-soft); margin: 0 4px; }
   
+  /* 手動模式按鈕（右上角極小） */
+  .manual-toggle {
+    position: fixed;
+    top: 6px;
+    right: 6px;
+    background: transparent;
+    border: 1px solid var(--rule);
+    border-radius: 50%;
+    width: 22px;
+    height: 22px;
+    padding: 0;
+    cursor: pointer;
+    font-size: 11px;
+    line-height: 1;
+    color: var(--ink-soft);
+    opacity: 0.4;
+    transition: opacity 0.2s;
+    z-index: 200;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .manual-toggle:hover { opacity: 1; }
+  .manual-toggle.active {
+    background: var(--accent);
+    color: var(--paper);
+    border-color: var(--accent);
+    opacity: 1;
+  }
+  
   /* 主漢字 */
   .character {
     font-family: 'Noto Serif TC', 'PingFang TC', 'Microsoft JhengHei', serif;
@@ -92,6 +125,29 @@
     color: var(--ink);
     text-align: center;
     margin-bottom: 8px;
+  }
+  
+  /* 範例詞（題目大字下方） */
+  .phrase-hint {
+    font-family: 'Iowan Old Style', 'Palatino Linotype', 'Microsoft JhengHei', 'PingFang TC', serif;
+    font-size: 28px;
+    color: var(--ink-soft);
+    text-align: center;
+    letter-spacing: 1px;
+    margin-top: 16px;
+    height: 38px;
+    font-style: italic;
+    opacity: 0.75;
+  }
+  .phrase-hint .phrase-label {
+    font-size: 16px;
+    margin-right: 8px;
+    letter-spacing: 3px;
+    font-style: normal;
+    color: var(--rule);
+  }
+  .phrase-hint .phrase-text {
+    font-style: normal;
   }
   
   /* 注音提示（答題後顯示在右側） */
@@ -335,7 +391,11 @@
   /* 結果頁 */
   .result-overlay {
     position: fixed;
-    inset: 0;
+    /* 留出左側歷史面板的空間：歷史面板 left:24px + width:18vw（最多 220px）+ 邊距 */
+    top: 0;
+    right: 0;
+    bottom: 0;
+    left: max(260px, calc(24px + 18vw + 16px));
     background: var(--paper);
     display: none;
     flex-direction: column;
@@ -343,6 +403,12 @@
     justify-content: center;
     padding: 40px;
     z-index: 50;
+  }
+  @media (max-width: 600px) {
+    /* 手機螢幕太小，結果畫面仍蓋滿 */
+    .result-overlay {
+      left: 0;
+    }
   }
   .result-overlay.show { display: flex; }
   .result-overlay h2 {
@@ -414,23 +480,133 @@
     display: flex;
     flex-direction: column;
     align-items: center;
-    justify-content: center;
-    padding: 40px;
+    justify-content: flex-start;
+    padding: 40px 24px;
     z-index: 80;
+    overflow-y: auto;
   }
   .start-overlay.hidden { display: none; }
   .start-overlay h1 {
     font-family: 'Didot', 'Bodoni 72', serif;
-    font-size: 48px;
-    margin-bottom: 12px;
+    font-size: 42px;
+    margin-bottom: 8px;
+    margin-top: 24px;
     letter-spacing: -1px;
   }
   .start-overlay .sub {
     font-style: italic;
     color: var(--ink-soft);
-    margin-bottom: 36px;
+    margin-bottom: 32px;
     letter-spacing: 1px;
   }
+  /* 載入區 */
+  .start-overlay .load-section {
+    width: 100%;
+    max-width: 720px;
+    margin-bottom: 24px;
+  }
+  .start-overlay .saved-banner {
+    padding: 12px 18px;
+    background: rgba(255,255,255,0.5);
+    border: 1px solid var(--rule);
+    border-left: 3px solid var(--green);
+    margin-bottom: 16px;
+    font-size: 14px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 16px;
+  }
+  .start-overlay .saved-banner.cloud { border-left-color: var(--accent); }
+  .start-overlay .saved-banner .meta {
+    color: var(--ink-soft);
+    font-size: 12px;
+    margin-top: 2px;
+  }
+  .start-overlay .upload-row {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    flex-wrap: wrap;
+  }
+  .start-overlay .upload-btn {
+    font-family: inherit;
+    padding: 10px 20px;
+    background: var(--paper);
+    color: var(--ink);
+    border: 1.5px solid var(--ink);
+    cursor: pointer;
+    font-size: 15px;
+    letter-spacing: 1px;
+  }
+  .start-overlay .upload-btn:hover { background: var(--paper-dark); }
+  .start-overlay .upload-hint {
+    color: var(--ink-soft);
+    font-size: 13px;
+  }
+  .start-overlay .clear-btn {
+    font-family: inherit;
+    padding: 6px 14px;
+    background: transparent;
+    color: var(--ink-soft);
+    border: 1px solid var(--rule);
+    cursor: pointer;
+    font-size: 12px;
+  }
+  .start-overlay .err {
+    color: var(--red);
+    font-size: 14px;
+    margin-top: 8px;
+  }
+  
+  /* 章節選擇區 */
+  .start-overlay .chapters-section {
+    width: 100%;
+    max-width: 720px;
+    margin-top: 12px;
+  }
+  .start-overlay .chapters-section h3 {
+    font-family: 'Didot', serif;
+    font-size: 16px;
+    letter-spacing: 4px;
+    color: var(--ink-soft);
+    margin-bottom: 14px;
+    text-transform: uppercase;
+    font-weight: normal;
+  }
+  .start-overlay .chapter-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+    gap: 8px;
+  }
+  .start-overlay .chapter-btn {
+    font-family: inherit;
+    padding: 12px 8px;
+    background: var(--paper);
+    color: var(--ink);
+    border: 1px solid var(--rule);
+    cursor: pointer;
+    font-size: 14px;
+    transition: all 0.15s;
+    text-align: center;
+  }
+  .start-overlay .chapter-btn:hover {
+    background: var(--ink);
+    color: var(--paper);
+    border-color: var(--ink);
+  }
+  .start-overlay .chapter-btn .ch-num {
+    font-weight: bold;
+    font-size: 16px;
+    display: block;
+  }
+  .start-overlay .chapter-btn .ch-range {
+    font-size: 11px;
+    color: var(--ink-soft);
+    margin-top: 2px;
+  }
+  .start-overlay .chapter-btn:hover .ch-range { color: var(--paper-dark); }
+  
   .start-btn-big {
     font-family: inherit;
     font-size: 22px;
@@ -449,13 +625,13 @@
     box-shadow: 0 4px 0 var(--ink);
   }
   .start-overlay .info-box {
-    margin-top: 32px;
-    max-width: 480px;
-    padding: 16px 24px;
+    margin-top: 24px;
+    max-width: 720px;
+    padding: 14px 20px;
     background: rgba(255,255,255,0.4);
     border: 1px solid var(--rule);
     border-radius: 2px;
-    font-size: 14px;
+    font-size: 13px;
     color: var(--ink-soft);
     line-height: 1.7;
   }
@@ -508,22 +684,44 @@
 <!-- 開始畫面 -->
 <div class="start-overlay" id="start-overlay">
   <h1>中文發音測驗</h1>
-  <div class="sub">— 示範版 · 10 題 —</div>
-  <button class="start-btn-big" id="start-btn">開始回答</button>
+  <div class="sub">念出畫面上的字 · 系統自動判定</div>
+  
+  <!-- 載入字庫區（隱藏：字庫由網頁自動載入） -->
+  <div class="load-section" style="display:none">
+    <div id="saved-file-area"></div>
+    <div class="upload-row">
+      <input type="file" id="file-input" accept=".xlsx,.xls" style="display:none">
+      <button class="upload-btn" id="upload-btn">上傳字庫 Excel</button>
+    </div>
+    <div class="err" id="load-err"></div>
+  </div>
+  
+  <!-- 載入錯誤訊息（單獨顯示，不依賴上傳區） -->
+  <div class="err" id="load-err-visible" style="color: var(--red); font-size: 14px; margin-bottom: 12px;"></div>
+  
+  <!-- 字庫載入狀態（簡單顯示，不顯示檔名/上傳功能） -->
+  <div id="load-status" style="font-size: 13px; color: var(--ink-soft); margin-bottom: 20px;">字庫載入中…</div>
+  
+  <!-- 章節選擇區 -->
+  <div class="chapters-section" id="chapters-section" style="display:none">
+    <h3>選擇章節開始考試</h3>
+    <div class="chapter-grid" id="chapter-grid"></div>
+  </div>
+  
   <div class="info-box">
-    按下「開始回答」後會請求麥克風權限。<br>
-    每題出現一個漢字，<strong>對著麥克風念出來</strong>即可。<br>
-    系統判定後會自動進入下一題，<strong>不需手動操作</strong>。
+    每章 50 字 · 隨機出題 · 念對自動進到下一題<br>
+    第一次按章節時會請求麥克風權限，請點「<strong>允許</strong>」。
   </div>
 </div>
 
 <div class="stage">
-  <div class="title">中文發音測驗 · 示範版</div>
+  <div class="title">中文發音測驗</div>
   <div class="counter">
     <span class="c-correct" id="c-correct">00</span><span class="c-sep">/</span><span class="c-wrong" id="c-wrong">00</span><span class="c-sep">/</span><span id="c-total">00</span>
   </div>
   
   <div class="character" id="char">—</div>
+  <div class="phrase-hint" id="phrase-hint"></div>
   <div class="zhuyin-hint" id="zhuyin-hint"></div>
   
   <div class="mic-status">
@@ -539,6 +737,9 @@
 
 <!-- 答題歷史（左側小字累積） -->
 <div class="history-panel" id="history-panel"></div>
+
+<!-- 手動模式切換（右上角極小按鈕） -->
+<button class="manual-toggle" id="manual-toggle" title="手動模式（左右鍵翻題）">✋</button>
 
 <!-- 麥克風權限錯誤 -->
 <div class="mic-error-box" id="mic-error">
@@ -569,20 +770,30 @@
 
 <!-- 結果頁 -->
 <div class="result-overlay" id="result-overlay">
-  <h2>測驗結束</h2>
+  <h2 id="r-h2">測驗結束</h2>
   <div class="fart-count" id="fart-count"></div>
   <div class="score">
     <span class="s-c" id="r-correct">00</span><span class="s-sep">/</span><span class="s-w" id="r-wrong">00</span><span class="s-sep">/</span><span class="s-t" id="r-total">00</span>
   </div>
   <div class="percent" id="r-percent"></div>
-  <button id="restart-btn">再來一次</button>
+  <div style="display:flex; gap:14px; margin-top:8px; flex-wrap:wrap; justify-content:center;">
+    <button id="restart-btn">再做一次</button>
+    <button id="retry-wrong-btn" style="background:transparent; color:var(--red); border:1.5px solid var(--red); display:none;">只考錯題</button>
+    <button id="change-chapter-btn" style="background:transparent; color:var(--ink); border:1.5px solid var(--ink);">換章節</button>
+  </div>
 </div>
 
 <script>
 'use strict';
 
 // ============ 內建測試字（10 個） ============
-const TEST_CHARS = ['體', '壓', '言', '謠', '溫', '氣', '行', '長', '重', '中'];
+// ============ 字庫資料 ============
+// allChars: 從 Excel 讀進來的所有字，依序排列（已按字頻排序）
+// chaptersMap: { 1: [字串...], 2: [字串...], ... }
+let allChars = [];
+let chaptersMap = {};
+let currentChapterChars = [];  // 目前選的章節字陣列（startQuiz 用）
+let currentChapterNum = null;
 
 // ============ 音效 ============
 let audioCtx;
@@ -823,10 +1034,12 @@ function getPinyinList(char) {
 let questions = [];
 let qIndex = 0;
 let stats = { correct: 0, wrong: 0, total: 0 };
+let wrongChars = [];           // 本次答錯的字（按順序）
 let recognition = null;
 let isRecognizing = false;
 let isLocked = false;
 let shouldKeepListening = false;  // 是否要在 onend 後繼續聆聽
+let manualMode = false;            // 手動模式（左右鍵翻題、不開麥克風）
 
 // ============ DOM ============
 const charEl = document.getElementById('char');
@@ -838,9 +1051,14 @@ const cCorrect = document.getElementById('c-correct');
 const cWrong = document.getElementById('c-wrong');
 const cTotal = document.getElementById('c-total');
 const startOverlay = document.getElementById('start-overlay');
-const startBtn = document.getElementById('start-btn');
 const micErrorBox = document.getElementById('mic-error');
 const micRetryBtn = document.getElementById('mic-retry');
+const fileInput = document.getElementById('file-input');
+const uploadBtn = document.getElementById('upload-btn');
+const savedFileArea = document.getElementById('saved-file-area');
+const loadErr = document.getElementById('load-err');
+const chaptersSection = document.getElementById('chapters-section');
+const chapterGrid = document.getElementById('chapter-grid');
 
 // ============ 啟動檢查 ============
 const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -849,17 +1067,23 @@ if (!SpeechRecognition) {
   startOverlay.classList.add('hidden');
 }
 
-// ============ 開始按鈕 ============
-startBtn.addEventListener('click', async () => {
+// ============ 開始章節（章節按鈕點擊或重做時用）============
+async function startChapter(chapterNum) {
+  const chars = chaptersMap[chapterNum];
+  if (!chars || chars.length === 0) {
+    alert('找不到章節 ' + chapterNum);
+    return;
+  }
+  
+  // 等 pinyin-pro 載入
   if (typeof pinyinPro === 'undefined') {
-    startBtn.textContent = '載入中…';
     let waited = 0;
     while (typeof pinyinPro === 'undefined' && waited < 5000) {
       await new Promise(r => setTimeout(r, 100));
       waited += 100;
     }
     if (typeof pinyinPro === 'undefined') {
-      startBtn.textContent = '載入失敗，請重整';
+      alert('注音資料載入失敗，請重整');
       return;
     }
   }
@@ -867,16 +1091,365 @@ startBtn.addEventListener('click', async () => {
   // 暖音訊上下文（user gesture 後初始化）
   try { getAudioCtx().resume(); } catch (e) {}
   
-  // 讓 SpeechRecognition 自己去請求麥克風權限
-  // （不再先用 getUserMedia 預先要，避免重複請求導致瀏覽器一直跳詢問）
-  setupRecognition();
+  currentChapterChars = chars.slice();
+  currentChapterNum = chapterNum;
+  
+  // 非手動模式才需要 SpeechRecognition
+  if (!manualMode && !recognition) {
+    setupRecognition();
+  }
+  
   startOverlay.classList.add('hidden');
   startQuiz();
-});
+}
 
 micRetryBtn.addEventListener('click', () => {
   location.reload();
 });
+
+// ============ 手動模式 ============
+const manualToggle = document.getElementById('manual-toggle');
+
+function setManualMode(on) {
+  manualMode = on;
+  if (on) {
+    manualToggle.classList.add('active');
+    // 停掉麥克風
+    shouldKeepListening = false;
+    try { recognition && recognition.stop(); } catch (e) {}
+    micIcon.classList.remove('listening');
+    micIcon.classList.add('locked');
+    micLabel.textContent = '手動模式 · 按 ← → 切換';
+    heardText.textContent = '';
+  } else {
+    manualToggle.classList.remove('active');
+    // 如果在考試中，重新開麥克風
+    if (questions.length > 0 && qIndex < questions.length && !document.getElementById('result-overlay').classList.contains('show')) {
+      shouldKeepListening = true;
+      isLocked = false;
+      micIcon.classList.remove('locked');
+      micLabel.textContent = '🎙 聆聽中…';
+      startListening();
+    }
+  }
+}
+
+manualToggle.addEventListener('click', () => {
+  setManualMode(!manualMode);
+});
+
+// 左右鍵翻題（只在手動模式生效）
+document.addEventListener('keydown', (e) => {
+  if (!manualMode) return;
+  // 不在考試中、或結果頁顯示中時，不處理
+  if (questions.length === 0) return;
+  
+  if (e.key === 'ArrowRight' || e.key === ' ') {
+    e.preventDefault();
+    // 下一題
+    if (qIndex < questions.length - 1) {
+      qIndex++;
+      isLocked = false;
+      renderQuestion();
+      // 顯示注音（手動模式邊看邊學）
+      showCurrentZhuyin();
+    } else {
+      // 已是最後一題 → 結果頁
+      shouldKeepListening = false;
+      showResult();
+    }
+  } else if (e.key === 'ArrowLeft') {
+    e.preventDefault();
+    if (qIndex > 0) {
+      qIndex--;
+      isLocked = false;
+      renderQuestion();
+      showCurrentZhuyin();
+    }
+  }
+});
+
+// 手動模式下顯示當前題目的注音（不算對錯）
+function showCurrentZhuyin() {
+  if (!manualMode) return;
+  const target = questions[qIndex];
+  const targetZhuyins = getZhuyinList(target);
+  if (targetZhuyins.length > 0) {
+    const TONE_CHARS = new Set(['ˊ','ˇ','ˋ','˙']);
+    const readings = targetZhuyins.map(z => {
+      let tone = '';
+      let syllables = z;
+      const lastChar = z.charAt(z.length - 1);
+      if (TONE_CHARS.has(lastChar)) {
+        tone = lastChar;
+        syllables = z.slice(0, -1);
+      }
+      return `<div class="zh-reading">
+        <div class="zh-syllables">${syllables}</div>
+        <div class="zh-tone">${tone}</div>
+      </div>`;
+    }).join('');
+    const count = Math.min(targetZhuyins.length, 4);
+    zhuyinHintEl.innerHTML = 
+      `<div class="zh-label">讀音</div>` +
+      `<div class="zh-readings count-${count}">${readings}</div>`;
+    zhuyinHintEl.classList.add('show');
+  }
+}
+
+// ============ Excel 解析 ============
+// 維護一個 char → phrase 的查詢表
+let phraseMap = {};
+
+function parseExcelBuffer(arrayBuffer) {
+  const wb = XLSX.read(arrayBuffer, { type: 'array' });
+  const ws = wb.Sheets[wb.SheetNames[0]];
+  const rows = XLSX.utils.sheet_to_json(ws, { defval: '' });
+  
+  if (!rows.length) {
+    throw new Error('檔案是空的');
+  }
+  
+  const sample = rows[0];
+  const keys = Object.keys(sample);
+  const findKey = (...candidates) => {
+    for (const c of candidates) {
+      const found = keys.find(k => k.toLowerCase().includes(c.toLowerCase()));
+      if (found) return found;
+    }
+    return null;
+  };
+  
+  const charKey = findKey('character', '字', 'char');
+  const chapterKey = findKey('chapter', '章節', '章');
+  const phraseKey = findKey('phrase', 'example', '詞', '範例', '例詞', '词');
+  
+  if (!charKey) {
+    throw new Error('找不到「Character / 字」欄位');
+  }
+  
+  allChars = [];
+  chaptersMap = {};
+  phraseMap = {};
+  
+  for (const row of rows) {
+    const ch = String(row[charKey] || '').trim();
+    if (!ch) continue;
+    const firstChar = [...ch][0];
+    if (!firstChar) continue;
+    
+    let chapterNum = null;
+    if (chapterKey) {
+      const chVal = String(row[chapterKey] || '').trim();
+      const m = chVal.match(/(\d+)/);
+      if (m) chapterNum = parseInt(m[1], 10);
+    }
+    
+    // 範例詞
+    if (phraseKey) {
+      const phrase = String(row[phraseKey] || '').trim();
+      if (phrase) phraseMap[firstChar] = phrase;
+    }
+    
+    allChars.push({ char: firstChar, chapter: chapterNum });
+    
+    if (chapterNum !== null) {
+      if (!chaptersMap[chapterNum]) chaptersMap[chapterNum] = [];
+      chaptersMap[chapterNum].push(firstChar);
+    }
+  }
+  
+  if (allChars.length === 0) {
+    throw new Error('沒讀到任何字');
+  }
+  
+  if (Object.keys(chaptersMap).length === 0) {
+    const PER = 50;
+    for (let i = 0; i < allChars.length; i++) {
+      const cn = Math.floor(i / PER) + 1;
+      allChars[i].chapter = cn;
+      if (!chaptersMap[cn]) chaptersMap[cn] = [];
+      chaptersMap[cn].push(allChars[i].char);
+    }
+  }
+}
+
+// ============ IndexedDB ============
+const DB_NAME = 'char-quiz-db';
+const STORE_NAME = 'files';
+const FILE_KEY = 'last-excel';
+
+function openDB() {
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open(DB_NAME, 1);
+    req.onupgradeneeded = e => {
+      const db = e.target.result;
+      if (!db.objectStoreNames.contains(STORE_NAME)) {
+        db.createObjectStore(STORE_NAME);
+      }
+    };
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  });
+}
+
+async function saveExcelToDB(name, arrayBuffer) {
+  try {
+    const db = await openDB();
+    const tx = db.transaction(STORE_NAME, 'readwrite');
+    tx.objectStore(STORE_NAME).put({
+      name, buffer: arrayBuffer, savedAt: new Date().toISOString()
+    }, FILE_KEY);
+    return new Promise(resolve => {
+      tx.oncomplete = () => { db.close(); resolve(); };
+      tx.onerror = () => { db.close(); resolve(); };
+    });
+  } catch (e) {
+    console.warn('IndexedDB save fail:', e);
+  }
+}
+
+async function loadExcelFromDB() {
+  try {
+    const db = await openDB();
+    return await new Promise(resolve => {
+      const tx = db.transaction(STORE_NAME, 'readonly');
+      const req = tx.objectStore(STORE_NAME).get(FILE_KEY);
+      req.onsuccess = () => { db.close(); resolve(req.result || null); };
+      req.onerror = () => { db.close(); resolve(null); };
+    });
+  } catch (e) {
+    return null;
+  }
+}
+
+async function clearSavedExcel() {
+  try {
+    const db = await openDB();
+    const tx = db.transaction(STORE_NAME, 'readwrite');
+    tx.objectStore(STORE_NAME).delete(FILE_KEY);
+    return new Promise(resolve => {
+      tx.oncomplete = () => { db.close(); resolve(); };
+      tx.onerror = () => { db.close(); resolve(); };
+    });
+  } catch (e) {}
+}
+
+// ============ 載入字庫的三層機制 ============
+const DEFAULT_EXCEL_URL = 'characters.xlsx';
+
+function showLoadErr(msg) { 
+  if (loadErr) loadErr.textContent = msg || ''; 
+  // 同時顯示在可見的訊息位置
+  const visible = document.getElementById('load-err-visible');
+  if (visible) visible.textContent = msg || '';
+}
+
+function renderSavedBanner(name, savedAt, source) {
+  // banner 已從 UI 隱藏，只更新狀態列
+  const status = document.getElementById('load-status');
+  if (status) {
+    status.textContent = `共 ${allChars.length} 字 / ${Object.keys(chaptersMap).length} 章`;
+  }
+  // 章節載入完成 → 渲染章節按鈕
+  renderChapterButtons();
+}
+
+function renderChapterButtons() {
+  chapterGrid.innerHTML = '';
+  const chapters = Object.keys(chaptersMap).map(n => parseInt(n, 10)).sort((a, b) => a - b);
+  
+  for (const num of chapters) {
+    const chars = chaptersMap[num];
+    const btn = document.createElement('button');
+    btn.className = 'chapter-btn';
+    btn.innerHTML = `
+      <span class="ch-num">第 ${num} 章</span>
+      <span class="ch-range">${chars[0]}…${chars[chars.length - 1]} (${chars.length})</span>
+    `;
+    btn.addEventListener('click', () => startChapter(num));
+    chapterGrid.appendChild(btn);
+  }
+  chaptersSection.style.display = '';
+}
+
+// === 從使用者上傳的檔案讀取 ===
+function loadExcelFromFile(file) {
+  showLoadErr('');
+  const reader = new FileReader();
+  reader.onload = async (e) => {
+    try {
+      const buffer = e.target.result;
+      parseExcelBuffer(buffer);
+      await saveExcelToDB(file.name, buffer);
+      renderSavedBanner(file.name, new Date().toISOString(), 'local');
+    } catch (err) {
+      console.error(err);
+      showLoadErr('讀取檔案失敗：' + err.message);
+    }
+  };
+  reader.onerror = () => showLoadErr('檔案讀取錯誤');
+  reader.readAsArrayBuffer(file);
+}
+
+uploadBtn.addEventListener('click', () => fileInput.click());
+fileInput.addEventListener('change', (e) => {
+  const file = e.target.files[0];
+  if (file) loadExcelFromFile(file);
+  fileInput.value = '';  // 允許重複上傳同檔
+});
+
+// === 從 IndexedDB 自動載入上次的檔案 ===
+async function tryAutoLoadSavedExcel() {
+  const saved = await loadExcelFromDB();
+  if (!saved) return false;
+  try {
+    parseExcelBuffer(saved.buffer);
+    renderSavedBanner(saved.name, saved.savedAt, 'local');
+    return true;
+  } catch (e) {
+    console.warn('自動載入失敗:', e);
+    await clearSavedExcel();
+    return false;
+  }
+}
+
+// === 從同資料夾的雲端 Excel 自動載入 ===
+async function tryLoadDefaultExcel() {
+  try {
+    const url = DEFAULT_EXCEL_URL + '?t=' + Date.now();
+    const resp = await fetch(url, { cache: 'no-store' });
+    if (!resp.ok) return false;
+    const buffer = await resp.arrayBuffer();
+    if (buffer.byteLength < 100) return false;
+    // xlsx 檔開頭是 PK (zip)
+    const view = new Uint8Array(buffer.slice(0, 2));
+    if (view[0] !== 0x50 || view[1] !== 0x4B) return false;
+    
+    parseExcelBuffer(buffer);
+    await saveExcelToDB(DEFAULT_EXCEL_URL, buffer);
+    renderSavedBanner(DEFAULT_EXCEL_URL, new Date().toISOString(), 'cloud');
+    return true;
+  } catch (e) {
+    return false;
+  }
+}
+
+// === 啟動：先試雲端、失敗試 IndexedDB ===
+async function bootstrap() {
+  const cloud = await tryLoadDefaultExcel();
+  if (cloud) return;
+  const local = await tryAutoLoadSavedExcel();
+  if (local) return;
+  // 都沒有 → 顯示錯誤訊息
+  const status = document.getElementById('load-status');
+  if (status) status.textContent = '';
+  showLoadErr('字庫載入失敗，請確認 characters.xlsx 是否在同一個資料夾，並重新整理頁面。');
+}
+
+if (SpeechRecognition) {
+  bootstrap();
+}
 
 function setupRecognition() {
   recognition = new SpeechRecognition();
@@ -939,12 +1512,16 @@ function setupRecognition() {
   };
 }
 
-function startQuiz() {
-  questions = shuffle(TEST_CHARS).slice(0);
+function startQuiz(charsOverride) {
+  // charsOverride：選填——指定字陣列（用於重考錯題）。
+  // 不傳就用 currentChapterChars。每次都重新洗牌。
+  const source = (charsOverride && charsOverride.length > 0) ? charsOverride : currentChapterChars;
+  questions = shuffle(source).slice(0);
   qIndex = 0;
   stats = { correct: 0, wrong: 0, total: questions.length };
+  wrongChars = [];
   document.getElementById('result-overlay').classList.remove('show');
-  shouldKeepListening = true;
+  shouldKeepListening = !manualMode;
   // 清空歷史面板
   const hp = document.getElementById('history-panel');
   if (hp) hp.innerHTML = '';
@@ -998,10 +1575,25 @@ function renderQuestion() {
   heardText.textContent = '';
   micIcon.classList.remove('locked');
   isLocked = false;
+  
+  // 顯示範例詞
+  const phraseEl = document.getElementById('phrase-hint');
+  const phrase = phraseMap[ch];
+  if (phrase) {
+    phraseEl.innerHTML = `<span class="phrase-label">範例：</span><span class="phrase-text">${phrase}</span>`;
+  } else {
+    phraseEl.innerHTML = '';
+  }
+  
   updateCounter();
   
-  // 自動開始聆聽
-  startListening();
+  if (manualMode) {
+    micLabel.textContent = '手動模式 · 按 ← → 切換';
+    micIcon.classList.add('locked');
+    showCurrentZhuyin();  // 手動模式直接顯示注音
+  } else {
+    startListening();
+  }
 }
 
 function updateCounter() {
@@ -1013,6 +1605,7 @@ function updateCounter() {
 
 function handleAnswer(alternatives) {
   if (isLocked) return;
+  if (manualMode) return;  // 手動模式不處理麥克風結果
   
   const target = questions[qIndex];
   const targetPinyins = getPinyinList(target);
@@ -1105,6 +1698,7 @@ function handleAnswer(alternatives) {
   } else {
     document.body.classList.add('wrong-flash');
     stats.wrong++;
+    wrongChars.push(target);
     playWrongSound();
     micLabel.textContent = '✗ 答錯';
     addToHistory(target, true);
@@ -1159,12 +1753,42 @@ function showResult() {
   const pct = stats.total > 0 ? (stats.correct / stats.total * 100).toFixed(1) : '0.0';
   document.getElementById('r-percent').textContent = `正確率 ${pct}%`;
   
+  // 「只考錯題」按鈕——有錯題且不是手動模式才顯示
+  const retryBtn = document.getElementById('retry-wrong-btn');
+  retryBtn.style.display = (wrongChars.length > 0 && !manualMode) ? '' : 'none';
+  if (wrongChars.length > 0) {
+    retryBtn.textContent = `只考錯題 (${wrongChars.length})`;
+  }
+  
   document.getElementById('result-overlay').classList.add('show');
 }
 
 document.getElementById('restart-btn').addEventListener('click', () => {
+  // 重做同一章（會重新洗牌，順序不會跟上次一樣）
   document.getElementById('result-overlay').classList.remove('show');
   startQuiz();
+});
+
+document.getElementById('retry-wrong-btn').addEventListener('click', () => {
+  // 只考剛才答錯的字（重新洗牌）
+  const toRetry = wrongChars.slice();  // 複製
+  if (toRetry.length === 0) return;
+  document.getElementById('result-overlay').classList.remove('show');
+  startQuiz(toRetry);
+});
+
+document.getElementById('change-chapter-btn').addEventListener('click', () => {
+  // 回到開始畫面選擇章節
+  document.getElementById('result-overlay').classList.remove('show');
+  // 停掉麥克風
+  shouldKeepListening = false;
+  isLocked = true;
+  try { recognition && recognition.stop(); } catch (e) {}
+  // 清空歷史
+  const hp = document.getElementById('history-panel');
+  if (hp) hp.innerHTML = '';
+  // 顯示起始畫面
+  startOverlay.classList.remove('hidden');
 });
 </script>
 </body>
