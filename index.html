@@ -107,7 +107,7 @@
     opacity: 0;
     transition: opacity 0.4s;
     pointer-events: none;
-    max-width: 22%;
+    max-width: 28%;
   }
   .zhuyin-hint.show { opacity: 1; }
   .zhuyin-hint .zh-label {
@@ -115,36 +115,104 @@
     letter-spacing: 6px;
     color: var(--ink-soft);
     text-transform: uppercase;
-    margin-bottom: 18px;
+    margin-bottom: 16px;
     border-bottom: 1px solid var(--rule);
-    padding-bottom: 10px;
+    padding-bottom: 8px;
     white-space: nowrap;
   }
+  /* 多讀音佈局：1=單一、2=上下、3=三層、4=2x2 */
   .zhuyin-hint .zh-readings {
-    display: flex;
-    flex-direction: column;
-    gap: 24px;
+    display: grid;
+    gap: 16px;
+    justify-items: center;
     align-items: center;
   }
+  .zhuyin-hint .zh-readings.count-1 { grid-template-columns: 1fr; }
+  .zhuyin-hint .zh-readings.count-2 { grid-template-columns: 1fr; }
+  .zhuyin-hint .zh-readings.count-3 { grid-template-columns: 1fr; }
+  .zhuyin-hint .zh-readings.count-4 { grid-template-columns: 1fr 1fr; }
+  
+  /* 單個讀音：注音字直排 + 聲調獨立放右邊 */
   .zhuyin-hint .zh-reading {
-    font-size: 150px;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+  }
+  .zhuyin-hint .zh-syllables {
+    font-size: 105px;
     font-weight: 600;
-    line-height: 1;
-    /* 注音直排顯示 */
+    line-height: 0.95;
     writing-mode: vertical-rl;
     text-orientation: upright;
     letter-spacing: 0;
   }
-  .zhuyin-hint .zh-divider {
-    width: 1px;
-    height: 40px;
-    background: var(--rule);
-    margin: 4px 0;
+  /* 聲調符號獨立顯示在韻母 column 的右邊，垂直置中 */
+  .zhuyin-hint .zh-tone {
+    font-size: 56px;
+    font-weight: 600;
+    line-height: 1;
+    /* 微調讓聲調符號視覺上對齊韻母中央 */
+    margin-bottom: 4px;
+    min-width: 0.4em;
+    text-align: left;
+  }
+  /* 多讀音變小 */
+  .zhuyin-hint .zh-readings.count-2 .zh-syllables,
+  .zhuyin-hint .zh-readings.count-3 .zh-syllables,
+  .zhuyin-hint .zh-readings.count-4 .zh-syllables {
+    font-size: 75px;
+  }
+  .zhuyin-hint .zh-readings.count-2 .zh-tone,
+  .zhuyin-hint .zh-readings.count-3 .zh-tone,
+  .zhuyin-hint .zh-readings.count-4 .zh-tone {
+    font-size: 40px;
   }
   
   @media (max-width: 900px) {
-    .zhuyin-hint .zh-reading { font-size: 90px; }
-    .zhuyin-hint .zh-divider { height: 24px; }
+    .zhuyin-hint .zh-syllables { font-size: 60px; }
+    .zhuyin-hint .zh-tone { font-size: 30px; }
+    .zhuyin-hint .zh-readings.count-2 .zh-syllables,
+    .zhuyin-hint .zh-readings.count-3 .zh-syllables,
+    .zhuyin-hint .zh-readings.count-4 .zh-syllables {
+      font-size: 44px;
+    }
+    .zhuyin-hint .zh-readings.count-2 .zh-tone,
+    .zhuyin-hint .zh-readings.count-3 .zh-tone,
+    .zhuyin-hint .zh-readings.count-4 .zh-tone {
+      font-size: 22px;
+    }
+  }
+  
+  /* 答題歷史（左側） */
+  .history-panel {
+    position: fixed;
+    top: 80px;
+    bottom: 80px;
+    left: 24px;
+    width: 18vw;
+    max-width: 220px;
+    overflow: hidden;
+    pointer-events: none;
+    /* 楷書字型 fallback 鏈：先 Mac、再 Windows、最後系統預設 */
+    font-family: 'Kaiti TC', 'BiauKai', 'STKaiti', '標楷體', 'DFKai-SB', 'KaiTi', 'Noto Serif TC', serif;
+    /* 從左上往下、寫滿一欄就跳到右邊新欄 */
+    display: flex;
+    flex-direction: column;
+    flex-wrap: wrap;
+    align-content: flex-start;
+    gap: 4px 14px;
+  }
+  .history-char {
+    font-size: 22px;
+    line-height: 1.2;
+    color: var(--ink-soft);
+    opacity: 0.5;
+    width: 1.2em;
+    text-align: center;
+  }
+  .history-char.wrong {
+    color: var(--red);
+    opacity: 0.85;
   }
   
   /* 麥克風狀態區 */
@@ -273,23 +341,53 @@
   .result-overlay.show { display: flex; }
   .result-overlay h2 {
     font-family: 'Didot', serif;
-    font-size: 24px;
+    font-size: 22px;
     letter-spacing: 6px;
     color: var(--ink-soft);
-    margin-bottom: 24px;
+    margin-bottom: 20px;
     text-transform: uppercase;
+  }
+  .result-overlay .fart-count {
+    font-family: 'Marker Felt', 'Comic Sans MS', 'Chalkboard', cursive;
+    text-align: center;
+    font-size: 60px;
+    line-height: 1.15;
+    margin-bottom: 28px;
+    color: var(--accent);
+    font-weight: bold;
+    transform: rotate(-2deg);
+    text-shadow: 3px 3px 0 var(--paper-dark);
+  }
+  .result-overlay .fart-count.zero {
+    color: var(--green);
+    transform: rotate(-1deg);
+  }
+  .result-overlay .fart-emoji {
+    display: inline-block;
+    font-size: 64px;
+    margin-right: 8px;
+    vertical-align: middle;
+    transform: rotate(-15deg) translateY(-4px);
   }
   .result-overlay .score {
     font-family: 'Courier New', monospace;
-    font-size: 56px;
+    font-size: 48px;
     font-weight: bold;
     letter-spacing: 4px;
-    margin-bottom: 32px;
+    margin-bottom: 12px;
   }
   .result-overlay .score .s-c { color: var(--green); }
   .result-overlay .score .s-w { color: var(--red); }
   .result-overlay .score .s-t { color: var(--ink); }
   .result-overlay .score .s-sep { color: var(--ink-soft); margin: 0 6px; font-weight: normal; }
+  .result-overlay .percent {
+    font-family: 'Iowan Old Style', Palatino, serif;
+    font-size: 22px;
+    color: var(--ink-soft);
+    letter-spacing: 2px;
+    margin-bottom: 36px;
+    font-style: italic;
+  }
   .result-overlay button {
     font-family: inherit;
     font-size: 18px;
@@ -433,6 +531,9 @@
   </div>
 </div>
 
+<!-- 答題歷史（左側小字累積） -->
+<div class="history-panel" id="history-panel"></div>
+
 <!-- 麥克風權限錯誤 -->
 <div class="mic-error-box" id="mic-error">
   <div class="err-card">
@@ -463,9 +564,11 @@
 <!-- 結果頁 -->
 <div class="result-overlay" id="result-overlay">
   <h2>測驗結束</h2>
+  <div class="fart-count" id="fart-count"></div>
   <div class="score">
     <span class="s-c" id="r-correct">00</span><span class="s-sep">/</span><span class="s-w" id="r-wrong">00</span><span class="s-sep">/</span><span class="s-t" id="r-total">00</span>
   </div>
+  <div class="percent" id="r-percent"></div>
   <button id="restart-btn">再來一次</button>
 </div>
 
@@ -836,7 +939,19 @@ function startQuiz() {
   stats = { correct: 0, wrong: 0, total: questions.length };
   document.getElementById('result-overlay').classList.remove('show');
   shouldKeepListening = true;
+  // 清空歷史面板
+  const hp = document.getElementById('history-panel');
+  if (hp) hp.innerHTML = '';
   renderQuestion();
+}
+
+function addToHistory(char, isWrong) {
+  const hp = document.getElementById('history-panel');
+  if (!hp) return;
+  const span = document.createElement('span');
+  span.className = 'history-char' + (isWrong ? ' wrong' : '');
+  span.textContent = char;
+  hp.appendChild(span);
 }
 
 function shuffle(arr) {
@@ -928,12 +1043,28 @@ function handleAnswer(alternatives) {
   // 在右邊顯示題目字的所有注音讀音
   const targetZhuyins = getZhuyinList(target);
   if (targetZhuyins.length > 0) {
-    const readings = targetZhuyins.map(z => 
-      `<div class="zh-reading">${z}</div>`
-    ).join('<div class="zh-divider"></div>');
+    // 把每個讀音拆成「聲韻部分」+「聲調符號」
+    const TONE_CHARS = new Set(['ˊ','ˇ','ˋ','˙']);
+    const readings = targetZhuyins.map(z => {
+      let tone = '';
+      let syllables = z;
+      // 取出尾端的聲調符號（如果有的話）
+      const lastChar = z.charAt(z.length - 1);
+      if (TONE_CHARS.has(lastChar)) {
+        tone = lastChar;
+        syllables = z.slice(0, -1);
+      }
+      // 第一聲沒符號，仍顯示空白讓佈局一致
+      return `<div class="zh-reading">
+        <div class="zh-syllables">${syllables}</div>
+        <div class="zh-tone">${tone}</div>
+      </div>`;
+    }).join('');
+    
+    const count = Math.min(targetZhuyins.length, 4);
     zhuyinHintEl.innerHTML = 
       `<div class="zh-label">正確讀音</div>` +
-      `<div class="zh-readings">${readings}</div>`;
+      `<div class="zh-readings count-${count}">${readings}</div>`;
     zhuyinHintEl.classList.add('show');
   } else {
     zhuyinHintEl.innerHTML = '';
@@ -949,11 +1080,13 @@ function handleAnswer(alternatives) {
     stats.correct++;
     playCorrectSound();
     micLabel.textContent = '✓ 答對';
+    addToHistory(target, false);
   } else {
     document.body.classList.add('wrong-flash');
     stats.wrong++;
     playWrongSound();
     micLabel.textContent = '✗ 答錯';
+    addToHistory(target, true);
   }
   updateCounter();
   
@@ -984,12 +1117,27 @@ function startListening() {
 // ============ 結果頁 ============
 function showResult() {
   shouldKeepListening = false;
-  // 用 stop 而非 abort（abort 會強制中斷整個會話）
   try { recognition && recognition.stop(); } catch (e) {}
+  
   const pad = n => String(n).padStart(2, '0');
   document.getElementById('r-correct').textContent = pad(stats.correct);
   document.getElementById('r-wrong').textContent = pad(stats.wrong);
   document.getElementById('r-total').textContent = pad(stats.total);
+  
+  // 放屁次數（=錯誤題數）
+  const fartEl = document.getElementById('fart-count');
+  if (stats.wrong === 0) {
+    fartEl.innerHTML = `<span class="fart-emoji">✨</span>一次屁都沒放！`;
+    fartEl.classList.add('zero');
+  } else {
+    fartEl.innerHTML = `<span class="fart-emoji">💨</span>你放了 ${stats.wrong} 次屁`;
+    fartEl.classList.remove('zero');
+  }
+  
+  // 正確百分比
+  const pct = stats.total > 0 ? (stats.correct / stats.total * 100).toFixed(1) : '0.0';
+  document.getElementById('r-percent').textContent = `正確率 ${pct}%`;
+  
   document.getElementById('result-overlay').classList.add('show');
 }
 
