@@ -184,6 +184,7 @@
   }
   
   /* 答題歷史（左側） */
+  /* 用絕對定位手動排列，避開所有 flex/column/writing-mode 的瀏覽器相容性問題 */
   .history-panel {
     position: fixed;
     top: 80px;
@@ -191,36 +192,27 @@
     left: 24px;
     width: 18vw;
     max-width: 220px;
-    overflow: hidden;
     pointer-events: none;
-    /* 楷書字型 fallback 鏈：先 Mac、再 Windows、最後系統預設 */
+    overflow: hidden;
     font-family: 'Kaiti TC', 'BiauKai', 'STKaiti', '標楷體', 'DFKai-SB', 'KaiTi', 'Noto Serif TC', serif;
-    /* 用 multi-column 佈局：寫滿一欄就自動跳到右邊新欄 */
-    column-width: 32px;
-    column-gap: 14px;
-    column-fill: auto;
-    /* 防止 iOS Safari 的 caret/select 殘影 */
+    /* iOS Safari 防護 */
     caret-color: transparent;
     -webkit-tap-highlight-color: transparent;
     -webkit-user-select: none;
     user-select: none;
+    background: transparent;
+    border: none;
+    outline: none;
   }
   .history-char {
-    display: block;
+    position: absolute;
     font-size: 22px;
-    line-height: 1.4;
+    line-height: 1;
     color: var(--ink-soft);
     opacity: 0.5;
-    width: 1.2em;
+    width: 22px;
+    height: 32px;
     text-align: center;
-    /* 確保 column 不會把字斷開 */
-    break-inside: avoid;
-    -webkit-column-break-inside: avoid;
-    page-break-inside: avoid;
-    caret-color: transparent;
-    -webkit-user-select: none;
-    user-select: none;
-    /* 雙保險避免 iOS Safari 文字渲染殘留 */
     -webkit-text-fill-color: currentColor;
   }
   .history-char.wrong {
@@ -965,6 +957,21 @@ function addToHistory(char, isWrong) {
   const span = document.createElement('span');
   span.className = 'history-char' + (isWrong ? ' wrong' : '');
   span.textContent = char;
+  
+  // 手動計算位置：依序往下排，超出容器高度就換到右邊新欄
+  const charHeight = 32;  // 每個字佔 32px 高
+  const charWidth = 22;   // 字寬
+  const colGap = 14;      // 欄間距
+  const containerHeight = hp.clientHeight || 600;
+  const rowsPerCol = Math.max(1, Math.floor(containerHeight / charHeight));
+  
+  const idx = hp.children.length;
+  const col = Math.floor(idx / rowsPerCol);
+  const row = idx % rowsPerCol;
+  
+  span.style.top = (row * charHeight) + 'px';
+  span.style.left = (col * (charWidth + colGap)) + 'px';
+  
   hp.appendChild(span);
 }
 
