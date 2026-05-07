@@ -1093,8 +1093,8 @@ async function startChapter(chapterNum) {
   currentChapterChars = chars.slice();
   currentChapterNum = chapterNum;
   
-  // 非手動模式才需要 SpeechRecognition
-  if (!manualMode && !recognition) {
+  // 一律建立 SpeechRecognition（即使從手動模式進入，後續也可能切換到一般模式）
+  if (!recognition) {
     setupRecognition();
   }
   
