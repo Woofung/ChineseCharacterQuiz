@@ -86,30 +86,33 @@
   .counter .c-wrong { color: var(--red); }
   .counter .c-sep { color: var(--ink-soft); margin: 0 4px; }
   
-  /* 手動模式按鈕（右上角極小） */
-  .manual-toggle {
+  /* 模式切換按鈕（右上角直排三個） */
+  .mode-panel {
     position: fixed;
-    top: 6px;
-    right: 6px;
-    background: transparent;
-    border: 1px solid var(--rule);
-    border-radius: 50%;
-    width: 22px;
-    height: 22px;
-    padding: 0;
-    cursor: pointer;
-    font-size: 11px;
-    line-height: 1;
-    color: var(--ink-soft);
-    opacity: 0.4;
-    transition: opacity 0.2s;
+    top: 8px;
+    right: 8px;
     z-index: 200;
     display: flex;
-    align-items: center;
-    justify-content: center;
+    flex-direction: column;
+    gap: 4px;
+    align-items: flex-end;
   }
-  .manual-toggle:hover { opacity: 1; }
-  .manual-toggle.active {
+  .mode-btn {
+    background: transparent;
+    border: 1px solid var(--rule);
+    border-radius: 2px;
+    padding: 4px 8px;
+    cursor: pointer;
+    font-family: 'Microsoft JhengHei', 'PingFang TC', sans-serif;
+    font-size: 11px;
+    letter-spacing: 1px;
+    color: var(--ink-soft);
+    opacity: 0.45;
+    transition: opacity 0.2s, background 0.15s;
+    white-space: nowrap;
+  }
+  .mode-btn:hover { opacity: 1; }
+  .mode-btn.active {
     background: var(--accent);
     color: var(--paper);
     border-color: var(--accent);
@@ -721,7 +724,12 @@
 <div class="history-panel" id="history-panel"></div>
 
 <!-- 手動模式切換（右上角極小按鈕） -->
-<button class="manual-toggle" id="manual-toggle" title="手動模式（左右鍵翻題）">✋</button>
+<!-- 三個模式切換按鈕（右上角直排） -->
+<div class="mode-panel" id="mode-panel">
+  <button class="mode-btn" id="mode-manual" title="手動模式（鍵盤左右鍵或點擊左右側翻題）">手動模式</button>
+  <button class="mode-btn" id="mode-easy" title="簡單模式（答題前先看到範例詞）">簡單模式</button>
+  <button class="mode-btn active" id="mode-normal" title="一般模式（答題後才顯示範例詞）">一般模式</button>
+</div>
 
 <!-- 觸控翻頁區（手動模式啟用時顯示，左半邊上一題、右半邊下一題） -->
 <div class="touch-zones" id="touch-zones">
@@ -1028,6 +1036,7 @@ let isRecognizing = false;
 let isLocked = false;
 let shouldKeepListening = false;  // 是否要在 onend 後繼續聆聽
 let manualMode = false;            // 手動模式（左右鍵翻題、不開麥克風）
+let currentMode = 'normal';        // 'manual' | 'easy' | 'normal'
 // 偵測是否為觸控裝置（iPad / iPhone / Android）
 const isTouchDevice = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
 
@@ -1104,39 +1113,66 @@ micRetryBtn.addEventListener('click', () => {
   location.reload();
 });
 
-// ============ 手動模式 ============
-const manualToggle = document.getElementById('manual-toggle');
+// ============ 模式切換（手動 / 簡單 / 一般） ============
+const modeManualBtn = document.getElementById('mode-manual');
+const modeEasyBtn = document.getElementById('mode-easy');
+const modeNormalBtn = document.getElementById('mode-normal');
 
-function setManualMode(on) {
-  manualMode = on;
-  if (on) {
-    manualToggle.classList.add('active');
-    // 停掉麥克風
+function setMode(mode) {
+  // mode: 'manual' | 'easy' | 'normal'
+  const prevManual = manualMode;
+  currentMode = mode;
+  manualMode = (mode === 'manual');
+  
+  // 更新按鈕高亮
+  modeManualBtn.classList.toggle('active', mode === 'manual');
+  modeEasyBtn.classList.toggle('active', mode === 'easy');
+  modeNormalBtn.classList.toggle('active', mode === 'normal');
+  
+  if (mode === 'manual') {
+    // 進入手動模式：停麥克風、顯示觸控區
     shouldKeepListening = false;
     try { recognition && recognition.stop(); } catch (e) {}
     micIcon.classList.remove('listening');
     micIcon.classList.add('locked');
     micLabel.textContent = '手動模式 · ' + (isTouchDevice ? '點擊左右側翻頁' : '按 ← → 切換');
     heardText.textContent = '';
-    // 顯示左右點擊提示（觸控裝置）
     document.getElementById('touch-zones').classList.add('show');
+    // 手動模式下立刻顯示當前題目的注音與範例
+    if (questions.length > 0 && qIndex < questions.length) {
+      showCurrentZhuyin();
+      showCurrentPhrase();
+    }
   } else {
-    manualToggle.classList.remove('active');
+    // 離開手動模式
     document.getElementById('touch-zones').classList.remove('show');
-    // 如果在考試中，重新開麥克風
-    if (questions.length > 0 && qIndex < questions.length && !document.getElementById('result-overlay').classList.contains('show')) {
+    // 如果剛從手動模式切過來、考試還在進行 → 重啟麥克風
+    if (prevManual && questions.length > 0 && qIndex < questions.length 
+        && !document.getElementById('result-overlay').classList.contains('show')) {
+      // 清空目前的注音和範例（會在新模式下重新顯示）
+      zhuyinHintEl.innerHTML = '';
+      zhuyinHintEl.classList.remove('show');
+      document.getElementById('phrase-hint').innerHTML = '';
       shouldKeepListening = true;
       isLocked = false;
       micIcon.classList.remove('locked');
       micLabel.textContent = '🎙 聆聽中…';
       startListening();
     }
+    // 簡單模式：當下這題就顯示範例詞
+    if (mode === 'easy' && questions.length > 0 && qIndex < questions.length && !isLocked) {
+      showCurrentPhrase();
+    }
+    // 一般模式：如果這題還沒答（!isLocked），把範例詞清掉
+    if (mode === 'normal' && questions.length > 0 && qIndex < questions.length && !isLocked) {
+      document.getElementById('phrase-hint').innerHTML = '';
+    }
   }
 }
 
-manualToggle.addEventListener('click', () => {
-  setManualMode(!manualMode);
-});
+modeManualBtn.addEventListener('click', () => setMode('manual'));
+modeEasyBtn.addEventListener('click', () => setMode('easy'));
+modeNormalBtn.addEventListener('click', () => setMode('normal'));
 
 // 翻題（手動模式下，鍵盤和觸控都呼叫此函式）
 function manualNext() {
@@ -1598,7 +1634,7 @@ function renderQuestion() {
   micIcon.classList.remove('locked');
   isLocked = false;
   
-  // 範例詞先清空（答題後才顯示）
+  // 範例詞先清空
   document.getElementById('phrase-hint').innerHTML = '';
   
   updateCounter();
@@ -1606,9 +1642,13 @@ function renderQuestion() {
   if (manualMode) {
     micLabel.textContent = '手動模式 · ' + (isTouchDevice ? '左右側點擊切換' : '按 ← → 切換');
     micIcon.classList.add('locked');
-    showCurrentZhuyin();  // 手動模式直接顯示注音
-    showCurrentPhrase();  // 手動模式直接顯示範例
+    showCurrentZhuyin();   // 手動模式直接顯示注音
+    showCurrentPhrase();   // 手動模式直接顯示範例
   } else {
+    // 簡單模式：答題前就顯示範例詞
+    if (currentMode === 'easy') {
+      showCurrentPhrase();
+    }
     startListening();
   }
 }
